@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medicaid Spending Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --surface:#ffffff; --surface-2:#f2f2f2; --rule:#e4e4e4;
+    --ink:#121212; --ink-2:#757575; --ink-3:#999999;
+    --sans:Geist,"Helvetica Neue",Helvetica,Arial,sans-serif; --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --s0:#86b6ef; --s1:#3987e5; --s2:#256abf; --s3:#184f95; --s4:#0d366b;
+    --nodata:#e9e8e4; --focus:#0b0b0b; --bar:#256abf;
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --surface:#1a1a19; --surface-2:#232321; --rule:#383835;
+    --ink:#ffffff; --ink-2:#c3c2b7; --ink-3:#8f8e86;
+    --s0:#184f95; --s1:#256abf; --s2:#3987e5; --s3:#86b6ef; --s4:#cde2fb;
+    --nodata:#2c2c2a; --focus:#ffffff; --bar:#5598e7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--surface);color:var(--ink)}
+  body{font:400 16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 16px 56px}
+  .eyebrow{font:300 13px/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 16px}
+  h1{font:700 clamp(32px,4.6vw,48px)/.95 var(--sans);letter-spacing:-.04em;color:var(--ink);margin:0 0 18px;max-width:18ch;text-wrap:balance}
+  .dek{color:var(--ink-2);max-width:60ch;margin:0 0 32px;font-size:18px;line-height:1.6}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;border-top:1px solid var(--ink);border-bottom:1px solid var(--rule);padding:12px 0;margin-bottom:24px}
+  .control{display:flex;flex-direction:column;gap:4px;min-width:200px}
+  .control label{font:300 12px/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+  select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:7px 10px;min-height:38px}
+  select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .grid{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:32px;align-items:start}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}.panel{order:2}.mapbox{order:1}}
+  .panel{border-top:1px solid var(--ink);padding-top:14px}
+  .panel .kicker{font:300 12px/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0}
+  .panel h2{font:600 26px/1.05 var(--sans);letter-spacing:-.02em;margin:6px 0 12px}
+  .hero{font:700 40px/1 var(--sans);letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .hero-sub{color:var(--ink-2);font-size:13px;margin:6px 0 18px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th{text-align:left;font:300 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);padding:0 0 8px;border-bottom:1px solid var(--rule)}
+  td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:10px}
+  .cat{color:var(--ink)}
+  .barrow{display:block;height:6px;background:var(--surface-2);border-radius:0 3px 3px 0;margin-top:6px}
+  .barrow i{display:block;height:100%;background:var(--bar);border-radius:0 3px 3px 0}
+  .neg{color:var(--ink-2)}
+  .fine{font-size:12px;color:var(--ink-3);margin:12px 0 0}
+  .mapbox{position:relative}
+  svg.map{display:block;width:100%;height:auto;overflow:visible}
+  .st{stroke:var(--surface);stroke-width:1;cursor:pointer;transition:opacity .12s}
+  .st:hover,.st.hover{stroke:var(--ink);stroke-width:1.5}
+  .st.sel{stroke:var(--ink);stroke-width:2}
+  .st:focus{outline:none}
+  .st:focus-visible{stroke:var(--focus);stroke-width:2.5}
+  .tip{position:absolute;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--rule);box-shadow:0 4px 18px rgba(0,0,0,.12);border-radius:6px;padding:8px 10px;font-size:12.5px;line-height:1.35;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));opacity:0;transition:opacity .1s;z-index:3}
+  .tip b{display:block;font-size:13px}
+  .tip span{color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .pop{position:absolute;background:var(--ink);color:var(--surface);border-radius:6px;padding:9px 12px;font-size:12.5px;line-height:1.35;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));z-index:4;display:none}
+  .pop::after{content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:var(--ink);transform:translateX(-50%) rotate(45deg)}
+  .pop b{display:block;font-size:13.5px}
+  .pop span{opacity:.8;font-variant-numeric:tabular-nums}
+  .legend{display:flex;align-items:flex-start;gap:0;margin:14px 0 0;max-width:520px}
+  .legend .sw{flex:1;font:300 11px/1.4 var(--mono);color:var(--ink-2)}
+  .legend .sw i{display:block;height:10px;margin-bottom:4px;border-right:2px solid var(--surface)}
+  .legend-title{font:300 12px/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 0}
+  details{margin-top:36px;border-top:1px solid var(--rule);padding-top:12px}
+  summary{cursor:pointer;font:300 12px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+  .full{margin-top:12px;overflow-x:auto}
+  .full table{min-width:720px;font-size:12.5px}
+  .full td{padding:6px 0}
+  footer{margin-top:28px;font-size:13px;line-height:1.6;color:var(--ink-2);border-top:1px solid var(--rule);padding-top:14px;max-width:80ch}
+  footer a{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">A data study by Alex Corvin</p>
+  <h1>Where Medicaid money goes, state by state</h1>
+  <p class="dek">Medicaid spending by type of service in federal fiscal year 2024. Select a state on the map, or from the list, to see how its spending breaks down.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label for="metric">Color the map by</label>
+      <select id="metric">
+        <option value="total">Total spending</option>
+        <option value="2">Share: managed care and health plans</option>
+        <option value="0">Share: fee-for-service acute care</option>
+        <option value="1">Share: fee-for-service long-term care</option>
+        <option value="3">Share: payments to Medicare</option>
+        <option value="4">Share: DSH payments</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="statePick">State</label>
+      <select id="statePick"></select>
+    </div>
+  </div>
+
+  <div class="grid">
+    <aside class="panel" aria-live="polite">
+      <p class="kicker" id="pKicker">National total</p>
+      <h2 id="pName">United States</h2>
+      <div class="hero" id="pTotal"></div>
+      <p class="hero-sub" id="pSub"></p>
+      <table>
+        <thead><tr><th>Service</th><th class="n">Spending</th><th class="n">Share</th></tr></thead>
+        <tbody id="pRows"></tbody>
+      </table>
+      <p class="fine" id="pNote"></p>
+    </aside>
+
+    <div class="mapbox" id="mapbox">
+      <svg class="map" id="map" viewBox="-60 10 1020 600" role="group" aria-label="US map of Medicaid spending by state"></svg>
+      <div class="tip" id="tip"></div>
+      <div class="pop" id="pop"></div>
+      <p class="legend-title" id="legendTitle"></p>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>View all states as a table</summary>
+    <div class="full"><table id="fullTable"></table></div>
+  </details>
+
+  <footer>
+    Source: KFF State Health Facts, <a href="https://www.kff.org/medicaid/state-indicator/distribution-of-medicaid-spending-by-service/" target="_blank" rel="noopener">"Distribution of Medicaid Spending by Service,"</a> federal fiscal year 2024 (October 1, 2023 to September 30, 2024). KFF estimates based on CMS Form 64 data as of September 2025. Retrieved October 1, 2026.
+    Covers all 50 states and D.C.; excludes administrative costs, accounting adjustments and U.S. territories. Figures include adjustments to prior years, so some categories are negative; they are shown as reported, with no share calculated. A low fee-for-service share usually means that care is paid through managed care plans instead, not that a state spends less on it. Shares and color groups are calculated from the KFF figures.
+    Independent rebuild using public data only. Not affiliated with or endorsed by KFF or CMS. Design and build: Alex Corvin.
+  </footer>
+</div>
+
+<script>
+const GEO = {"Alabama":"M642 384l47 -4l13 47l2 2l1 3l3 4l-1 3l3 1l-3 3l0 3l-1 4l1 3l1 2l1 2l-1 8l3 4l-50 5l-1 3l2 3l3 1l0 4l1 1l-1 1l-1 2l1 0l-1 1l-9 2l1 -1l0 1l3 -1l0 -1l-3 -2l-1 -5l-2 -1l-1 1l0 7l-1 0l-2 -1l-3 0l-4 -34l2 -69l-2 -2z","Alaska":"M99 570l1 -1l0 1l0 -1l2 -2l0 -1l1 -1l0 3l0 -1l1 1l1 -1l0 2l-2 0l-1 1l-1 0l-2 0zM93 575l3 -2l1 0l0 1l0 -2l1 -1l2 1l-1 -1l2 0l-1 0l1 0l0 1l2 -1l1 1l-1 0l0 2l2 -1l-1 2l-2 -1l1 1l-3 2l2 0l-2 1l-1 -1l-1 2l-2 1l1 -1l0 -2l-2 3l-2 -5zM44 547l2 1l4 -1l1 2l0 2l-3 1l-4 -3l0 -2zM31 601l3 -1l2 -2l1 1l-2 -2l1 0l2 -1l0 1l0 1l1 -1l1 0l-2 2l2 -1l-3 3l-2 0l-3 1l-1 -1zM51 505l8 -4l5 -1l2 0l-1 4l6 1l2 -2l1 1l-1 -2l-2 0l1 -1l-2 -3l1 0l1 1l-1 1l2 2l-1 -2l1 -2l-1 -1l-2 0l-3 -1l-1 -4l-7 -8l2 -1l1 -2l5 0l2 -1l3 -5l3 -4l3 0l5 -3l1 1l3 -1l2 -3l4 1l-1 3l2 -3l1 1l0 2l1 0l3 -1l2 1l0 1l2 1l-1 1l2 0l5 -1l5 2l5 0l3 1l4 -2l7 2l14 73l2 0l2 0l1 -1l3 -1l0 2l7 5l2 3l3 -3l0 -4l2 -2l3 1l1 2l1 0l2 3l5 2l7 8l0 1l2 -1l0 2l1 0l1 2l1 -1l5 1l1 1l1 0l3 6l-2 5l0 -1l-1 1l-2 -3l1 -1l-1 -3l-1 -1l1 2l0 3l-3 0l-1 -1l0 -3l0 3l-1 0l-1 -5l0 1l0 1l-1 1l-1 -1l-1 -1l0 -1l1 -1l0 -1l-4 -3l-3 -1l-2 -3l3 0l-3 -1l-2 -2l-1 -1l0 1l-2 0l-6 -7l1 1l4 7l-2 -1l-2 0l-2 -3l0 1l-2 -2l-1 1l3 1l1 2l-2 2l-4 -2l-4 -3l-7 -2l1 -1l-1 -3l0 2l-2 1l-5 0l1 -1l-6 0l-6 2l-1 1l2 -2l-4 -1l1 0l-1 0l0 -2l-1 2l-3 -1l1 -1l-2 1l1 1l-3 1l0 -2l3 -1l0 -1l-1 1l0 -1l-1 0l-1 0l2 -1l-2 0l-1 -1l1 -1l-1 2l-1 -2l0 2l-1 0l-1 1l-2 0l1 -2l-1 0l-1 2l1 1l0 2l1 -1l0 1l0 2l1 1l-1 1l-1 0l0 -2l0 2l-3 0l-1 1l0 -2l0 2l-1 -1l0 3l-2 -1l1 1l-2 2l-1 -2l0 2l-1 1l-2 0l-1 1l-1 -1l0 -1l2 -1l2 -2l-2 1l-2 -1l2 -4l0 -2l0 -1l4 -3l1 1l1 -1l2 1l-3 -2l2 -3l-1 0l-1 2l-3 0l-3 2l-1 2l1 0l-3 2l1 1l-2 2l0 1l-1 1l-1 1l1 0l-1 1l-4 3l0 2l2 0l2 2l-4 3l0 2l-4 2l-1 2l-1 -1l-1 2l-1 0l0 1l-1 -1l-1 2l1 0l0 1l-1 1l-2 0l-1 2l-1 -1l-1 2l-1 -1l0 1l0 1l-2 0l-1 1l2 1l-2 2l-1 -1l0 1l-1 0l-3 0l0 2l-1 1l1 -2l-1 -1l-4 3l-1 -1l-2 2l-1 -1l1 -1l-1 0l-2 3l-1 -1l1 1l-1 0l-1 1l-1 -1l0 -2l0 3l-2 0l0 -1l-1 0l1 1l-2 1l1 1l-1 -1l-1 1l-3 0l-1 1l-2 0l-1 -2l3 -1l4 -1l1 1l1 -2l2 0l5 -5l4 0l0 1l0 1l1 -1l2 1l0 -1l-2 -1l2 -2l6 -4l1 0l0 -1l2 -2l3 -3l1 -4l0 -1l0 -2l2 -2l0 -1l-4 2l-2 -2l0 -1l-1 1l0 3l-1 1l-3 -5l-1 1l-1 -1l0 -1l-6 3l-1 -1l1 -2l-1 -3l2 -1l-2 -6l-1 1l-2 1l-4 0l0 -2l-4 -4l1 0l-1 0l1 -2l0 -2l1 0l-1 -2l-1 1l0 -1l-1 -1l1 -1l-2 -1l0 -1l2 0l-1 -1l1 0l1 -2l3 -4l3 -4l1 0l2 2l1 0l3 -3l4 0l2 -2l0 -4l-2 -1l1 -1l1 0l1 -1l-1 -2l-1 1l-3 0l-2 3l-1 -3l-1 1l1 1l-2 -1l-5 0l-4 -2l-1 -5l1 1l1 -1l-4 -2l-1 -2zM25 603l2 -2l2 0l0 -2l3 0l-1 1l-2 1l-1 1l-3 1zM34 518l1 -2l3 2l1 0l3 3l3 1l-1 1l-2 0l-1 1l-3 -4l-3 0l-1 -1l0 -1zM185 573l1 -2l-1 0l0 -1l2 0l6 4l-2 0l0 1l1 0l1 0l1 1l1 2l1 2l-3 0l1 -1l-1 0l-1 -2l0 2l-2 -1l1 2l1 -1l1 1l-1 0l1 1l-1 0l-2 -1l-1 -2l-1 0l0 -1l1 -1l-3 -2l0 -2l-1 2l0 -1zM180 567l2 -1l0 1l-1 -2l1 0l3 -1l4 3l-1 1l-2 0l0 1l-2 0l-1 4l-3 -6zM175 556l1 1l2 0l2 2l1 2l-2 -2l2 4l-1 3l-2 -1l1 -2l-4 -7zM174 565l1 -2l2 0l3 5l1 5l-3 -4l-3 -1l1 0l-1 -3l0 1l-1 -1zM169 561l0 -2l1 0l2 -1l3 1l1 1l-1 0l2 3l-1 0l-2 -1l0 2l0 1l-1 0l-4 -4z","Arizona":"M145 407l4 0l1 -2l0 -4l-3 -1l0 -1l1 -4l-1 -1l1 -1l0 -1l2 -1l2 -2l1 -3l1 0l0 -6l2 -1l1 -2l3 -1l3 -2l-4 -5l0 -1l-1 -5l-2 -4l1 -3l1 -1l-1 -1l2 -1l-1 -8l1 -3l0 -4l1 -2l-1 -1l1 -4l3 0l4 0l1 4l2 0l3 -4l3 -18l47 9l42 6l-18 128l-39 -6l-66 -38l1 -3l2 -2z","Colorado":"M277 237l48 6l36 4l34 2l-1 23l-4 69l-18 -2l-57 -5l-50 -6l12 -91z","Florida":"M794 604l1 -2l5 -4l4 1l1 1l-3 2l-2 0l-4 2l-2 1l0 -1zM711 469l2 5l1 1l52 -4l1 5l3 0l0 -5l-1 -2l0 -3l1 0l0 -1l5 1l5 0l3 10l4 10l8 14l10 11l1 3l-1 1l0 2l2 5l5 7l10 20l2 26l-1 -2l-1 1l-1 4l1 3l-1 2l0 1l1 -1l2 -5l0 2l-2 7l-6 6l3 -4l1 -3l-2 0l-4 2l-2 -1l-1 2l-4 1l-2 -1l0 -1l0 -3l-4 -7l-2 0l-1 -2l-5 -2l-1 1l-3 -4l-2 -7l-4 -2l0 -1l-1 0l0 1l-1 1l-1 -4l-1 -1l1 0l1 1l0 -4l-1 -3l-1 1l1 3l-2 1l-1 1l0 -3l-12 -14l1 1l1 -1l4 -6l0 -2l0 -1l-2 0l1 2l-2 -1l0 -2l-3 -1l0 1l-1 1l2 0l1 2l0 3l-2 0l1 2l-1 0l0 -2l-3 -4l0 -3l-1 -4l1 3l1 0l-1 -2l2 -6l0 -4l-3 -5l1 -2l-2 -3l-1 0l0 -2l-4 0l-1 1l-1 -3l-2 0l-1 -3l-4 -2l-1 -3l-2 -1l-4 -4l-7 -3l-2 1l-3 -1l-1 3l0 2l-2 0l-1 0l-7 5l0 -1l-2 2l-2 0l2 2l6 -4l-1 2l-5 3l-4 -2l-3 1l-1 -4l0 -1l2 4l0 -2l-2 -3l-10 -6l-7 -2l-11 0l-14 4l1 -1l-1 0l1 -2l1 -1l-1 -1l0 -4l-3 -1l-2 -3l1 -3l50 -5z","Georgia":"M689 380l24 -3l22 -3l0 1l-3 4l0 3l6 3l3 0l3 6l4 5l5 2l2 2l1 2l3 1l3 3l0 2l2 1l0 1l1 1l1 1l5 2l0 2l2 2l1 5l5 3l2 4l-1 1l1 2l5 2l1 0l0 1l-2 1l1 1l-1 1l-2 0l0 1l1 0l-1 2l-2 0l2 1l0 2l-1 1l-1 1l1 0l-1 4l0 3l-1 2l0 3l-2 1l2 0l0 6l-5 0l-5 -1l0 1l-1 0l0 3l1 2l0 5l-3 0l-1 -5l-52 4l-1 -1l-2 -5l-3 -4l1 -8l-1 -2l-1 -2l-1 -3l1 -4l0 -3l3 -3l-3 -1l1 -3l-3 -4l-1 -3l-2 -2l-13 -47z","Indiana":"M640 230l2 0l0 1l3 0l7 -3l34 -4l0 1l7 59l-2 2l2 1l-1 2l2 0l0 3l-3 0l-3 3l-3 -1l-2 0l1 4l-2 2l-1 1l-1 3l-1 1l-2 0l-1 3l0 3l-2 2l-4 -2l0 -2l-2 -1l0 1l1 0l-2 1l-1 0l1 1l-1 1l0 2l-1 1l-1 1l-1 0l1 -1l-2 0l-1 -2l-1 1l-3 2l-1 2l-1 1l0 -2l-4 -1l-3 1l-1 -2l0 3l-1 1l-1 -2l-2 1l-2 -1l1 2l-1 1l-2 0l-1 -3l1 1l-1 -1l1 -1l0 -2l1 0l0 -1l-1 0l1 -1l-1 -2l1 -2l1 1l0 -1l1 1l1 -5l2 -1l0 -3l2 -2l0 -1l-1 -2l0 -2l-1 -1l-2 -4l2 -1l-1 -1l0 -2l1 0l-5 -54z","Kansas":"M394 272l60 3l56 0l3 3l3 0l1 1l0 1l0 1l1 -1l-1 1l-1 0l-2 5l3 3l0 2l2 2l4 1l0 50l-64 0l-69 -3l4 -69z","Maine":"M910 150l-2 -1l-1 -2l-2 -2l-1 -1l-1 -4l-12 -38l1 0l0 -1l1 1l2 1l-1 -4l1 -1l2 1l-2 -3l2 -4l2 -2l-1 -1l2 -3l0 -1l-1 0l0 -1l-1 0l1 -4l-1 0l0 -4l2 -2l-1 -7l7 -19l3 0l1 3l2 1l5 -3l3 -1l0 -2l3 0l7 4l8 24l-1 1l1 2l1 3l1 -1l2 2l3 -1l1 2l-1 1l2 2l-1 2l3 3l1 -2l2 0l4 5l1 2l-2 4l-1 1l-1 -1l-2 1l1 1l-1 2l-1 0l1 1l-1 2l-1 -2l-2 1l0 -1l-1 3l-1 1l-1 1l0 -1l0 2l-1 -1l-2 1l0 3l1 0l-3 1l-2 -2l2 -2l-1 0l0 1l-1 -1l-2 1l2 3l-1 3l1 3l-1 -2l-1 -1l-1 -1l1 -1l-2 -1l-1 0l-1 -4l-1 2l-1 1l1 1l-1 5l0 1l1 0l0 1l0 1l0 1l-1 0l-2 4l0 -2l-1 1l0 -2l-1 1l-1 3l-1 -1l0 2l-1 -1l0 2l-1 -1l0 2l-1 1l-1 -1l-1 0l-1 2l-2 1l0 4l-1 -1l-1 1l0 4l-2 1l0 5l-1 2z","Massachusetts":"M928 187l2 -1l2 -2l1 2l-1 1l-1 1l-3 -1zM918 188l1 0l2 -4l3 2l0 -1l1 2l-5 1l0 1l-2 -1zM871 168l13 -3l19 -4l0 -2l1 0l0 -1l1 -1l1 0l0 -1l3 -1l2 4l2 0l0 -1l1 0l0 2l-3 2l0 1l-2 3l1 1l0 2l2 -2l3 2l2 2l0 2l-1 0l3 1l1 3l2 1l3 0l4 -3l-1 -3l-1 1l-1 -3l-2 0l0 -1l3 1l1 1l3 6l0 3l-1 -2l-5 2l-2 2l-3 1l-2 3l-2 2l4 -5l-1 -3l1 0l-2 -1l0 3l-3 1l0 2l-2 1l-1 -3l-1 0l-1 -1l-2 -1l-3 -5l-6 2l-16 3l-1 1l-11 2l0 -1l0 -15z","Minnesota":"M479 71l32 0l0 -9l1 1l2 -1l2 2l2 9l0 3l1 0l1 1l4 0l1 1l6 1l1 2l4 -1l0 -1l2 0l6 0l4 1l1 0l0 1l-1 1l3 0l2 5l2 0l-1 -2l1 -1l3 0l2 3l3 0l2 3l1 -1l0 2l5 -1l5 -4l1 0l1 3l10 -1l4 3l2 -1l4 0l-8 4l-8 4l-5 3l-9 10l-9 8l1 2l-1 -1l-1 1l-1 1l-1 0l0 14l0 1l-2 0l0 1l-1 0l-3 2l-1 3l-1 1l0 3l1 0l2 3l0 1l-1 3l0 4l-1 0l1 4l-1 4l5 4l3 0l2 3l5 2l1 3l5 4l2 0l4 5l-1 4l1 2l-42 2l-43 0l0 -41l-1 -1l-3 -1l-3 -5l5 -5l0 -2l0 -9l-2 -3l-1 -5l0 -5l-1 -1l0 -15l-4 -13l0 -8l0 -3l-2 -7z","New Jersey":"M849 246l1 -2l1 -3l4 -2l0 -2l6 -6l-6 -5l-1 0l-1 -2l-2 -1l-1 -2l0 -2l1 0l1 -3l-2 -2l2 -3l1 -5l2 -2l15 5l-1 7l0 1l-2 1l0 3l0 1l1 1l1 -1l2 0l1 3l1 12l-2 8l-1 2l-3 4l-3 8l-1 0l0 -5l-3 -1l-1 0l0 1l-1 -1l-8 -3l0 -3l-1 -1z","North Carolina":"M863 350l1 -2l7 -5l-1 -7l-1 -4l2 4l0 8l-4 2l-4 4zM756 334l38 -5l65 -13l3 7l6 9l-3 -4l-1 0l-4 -9l-1 -1l-2 0l0 -1l-1 0l2 2l4 7l-3 -3l0 1l1 1l-2 0l-4 -2l3 3l-2 1l-2 -1l2 1l-5 -1l3 2l-2 1l-1 2l-3 -1l-1 -2l-1 -3l0 3l2 5l5 -2l1 0l5 -2l1 1l0 2l1 5l0 -1l0 -6l2 -1l1 0l2 3l1 3l-1 2l-2 1l-2 4l-1 2l-7 1l-2 -3l2 -1l-3 1l2 3l-9 -2l1 2l9 1l1 1l-1 5l-3 3l-4 -2l0 2l4 1l2 -2l3 -1l0 -2l2 2l1 0l-1 -1l2 0l0 2l-2 2l-1 4l-1 0l-1 -1l0 -1l0 2l-1 0l3 1l6 -11l1 0l-5 7l-2 5l0 -1l-3 0l-6 2l-3 2l-6 5l-4 7l-1 7l-4 -1l-4 1l-2 2l-25 -18l-20 3l-1 -2l-3 -4l-2 2l0 -2l-24 3l-1 -1l0 1l-6 3l-6 3l-22 3l0 -6l1 -1l2 0l1 -1l0 -2l2 -3l2 -1l5 -1l6 -6l3 0l1 -3l0 -1l1 0l1 -2l2 -2l1 1l0 2l1 0l2 -4l2 -1l1 -1l2 0l0 1l2 0l1 -5l2 -1l2 0l-1 -2l1 -4z","North Dakota":"M377 66l54 3l48 2l2 7l0 3l0 8l4 13l0 15l1 1l0 5l1 5l2 3l0 9l-57 -2l-61 -4l6 -68z","Oklahoma":"M372 339l18 2l69 3l64 0l0 11l4 26l-1 40l-1 -1l-3 0l-1 -2l-1 0l-3 -2l-1 0l-2 -2l-2 -1l-1 2l-4 0l-1 -1l-3 1l0 1l-2 0l-2 -1l-1 1l-2 0l-2 2l-1 0l-1 2l-2 -2l-1 0l-1 -1l-2 -1l1 -1l-2 0l0 1l-1 1l-1 -1l-1 0l-1 -2l-2 0l1 1l-2 2l-1 2l-1 0l-1 -2l1 -1l-1 -2l0 2l-2 -1l-1 2l-1 0l0 -2l-3 -1l0 -1l-1 0l-4 3l-2 -1l1 -2l-3 -1l0 -2l0 -1l-1 0l0 1l-4 -1l-1 1l-1 1l-2 -2l-1 -1l-2 1l-4 -2l-4 0l-1 -3l-3 -3l0 2l-3 -1l-1 1l-2 0l-3 -4l-1 -1l-1 0l2 -44l-54 -3l0 -12z","Pennsylvania":"M756 209l6 -4l0 -1l1 0l5 -4l1 6l72 -14l1 1l1 2l2 -1l1 1l1 5l3 2l1 0l0 1l3 0l1 1l-2 2l-1 5l-2 3l2 2l-1 3l-1 0l0 2l1 2l2 1l1 2l1 0l6 5l-6 6l0 2l-4 2l-3 0l-1 1l-2 3l-63 12l-17 3l-4 -21l-5 -30z","South Dakota":"M369 156l2 -22l61 4l57 2l0 2l-5 5l3 5l3 1l1 1l0 41l-3 0l0 2l1 1l0 2l-1 0l1 2l1 0l1 2l-1 2l-1 4l-1 2l0 1l1 2l2 3l-3 0l-2 -2l1 -1l-4 -2l-1 0l0 -1l-3 0l-1 -2l-10 -1l-2 3l-2 0l-7 -5l0 -1l-53 -2l-39 -3l4 -45z","Texas":"M372 351l54 3l-2 44l1 0l1 1l3 4l2 0l1 -1l3 1l0 -2l3 3l1 3l4 0l4 2l2 -1l1 1l2 2l1 -1l1 -1l4 1l0 -1l1 0l0 1l0 2l3 1l-1 2l2 1l4 -3l1 0l0 1l3 1l0 2l1 0l1 -2l2 1l0 -2l1 2l-1 1l1 2l1 0l1 -2l2 -2l-1 -1l2 0l1 2l1 0l1 1l1 -1l0 -1l2 0l-1 1l2 1l1 1l1 0l2 2l1 -2l1 0l2 -2l2 0l1 -1l2 1l2 0l0 -1l3 -1l1 1l4 0l1 -2l2 1l2 2l1 0l3 2l1 0l1 2l3 0l1 1l3 2l1 -1l1 1l1 -1l1 1l2 0l0 12l0 23l5 5l0 2l0 2l2 2l-1 1l2 2l0 1l1 1l0 3l1 -1l1 4l-1 0l1 2l-1 1l1 1l-4 7l1 2l-1 3l1 1l0 3l-1 1l1 1l-4 5l2 3l-6 1l-13 7l2 -2l2 -2l2 0l-1 -1l-5 1l2 -3l0 -2l-2 0l-2 2l-1 0l-1 0l-1 3l3 1l0 4l-4 4l-1 -1l0 2l3 -2l3 -3l1 -1l1 1l-13 11l-18 9l-3 3l-7 5l-4 4l-6 11l-2 8l1 6l3 16l-2 -10l-2 0l1 -1l-2 -7l1 -10l6 -13l6 -6l7 -4l0 -1l-5 2l0 -2l-2 0l0 4l-3 2l-2 0l0 -1l-3 2l1 1l2 -1l0 1l-3 5l-1 -1l-5 0l0 1l2 0l0 2l3 1l-4 8l-2 1l1 0l0 -2l-1 0l-2 3l4 0l-1 10l0 4l1 3l1 0l2 5l-1 1l0 3l2 0l0 1l1 0l0 2l-2 0l-2 1l0 2l-2 -1l-4 -4l-3 0l-5 -1l0 1l-4 -1l-2 -2l-1 0l-2 -1l-2 -1l-2 0l-3 -3l-5 -1l-1 0l1 -2l-2 -1l-2 -7l-3 -4l0 -5l-2 -2l2 -4l-1 0l0 -1l-2 -2l-2 -1l-3 -3l-1 -4l-1 0l-2 -4l-2 -1l-2 -2l-1 -5l-1 -1l0 -1l-2 -2l0 -4l-2 -2l-1 -4l-2 -2l0 -1l-4 -3l-1 -3l-4 -2l0 -2l0 2l-1 -2l-1 -1l-1 -2l-2 0l0 -1l-3 1l-3 -1l-5 0l-1 -2l-4 0l-1 2l-2 -1l-4 1l-2 5l-1 4l-1 0l-1 2l1 0l-3 1l-2 3l0 2l-4 -1l-2 -1l-3 -3l-1 0l-3 -3l-4 -1l-3 -2l-2 -3l-1 0l-3 -3l-3 -7l0 -6l-3 -5l-1 -5l-5 -5l-3 -2l-3 -3l-1 -2l-3 -2l-3 -5l-4 -3l-3 -6l-3 -2l-2 -3l1 -2l68 6l8 -102l1 0z","Wyoming":"M369 156l-4 45l-4 46l-36 -4l-48 -6l-33 -5l3 -22l9 -56l2 -12l63 9l48 5z","Connecticut":"M871 184l11 -2l1 -1l16 -3l3 13l0 2l-2 0l-3 2l-4 2l-5 2l-3 0l0 -1l-3 5l-1 -1l-3 3l0 1l-4 2l-2 -2l4 -3l-2 -2l-3 -17z","Missouri":"M502 262l29 0l40 -2l4 3l0 1l1 1l-1 3l0 3l3 9l5 4l1 2l6 4l1 4l-1 0l1 3l2 1l2 -2l6 2l-2 3l1 3l-2 5l0 4l5 4l3 2l-1 1l1 1l1 -1l4 2l-1 1l3 1l1 2l-1 1l0 1l2 3l-1 2l1 1l2 5l2 1l0 -1l-1 -1l1 0l1 2l1 0l1 0l-1 4l1 1l-2 1l1 1l-1 2l-2 -1l-1 1l0 2l-1 1l0 -1l0 -1l-2 0l1 2l0 2l0 1l-1 0l0 1l1 1l-1 0l-2 0l2 3l-1 1l-1 2l-12 1l3 -5l2 -2l0 -2l-1 -1l0 -2l-81 3l0 -11l0 -50l-4 -1l-2 -2l0 -2l-3 -3l2 -5l1 0l1 -1l-1 1l0 -1l0 -1l-1 -1l-3 0l-3 -3l-2 -1l0 -2l-1 -1l0 -1l-2 -2l-2 -3l1 -3l-1 1l-1 0l0 -1z","West Virginia":"M733 295l1 0l4 -2l0 -3l2 -1l-1 -4l2 -5l2 0l1 3l1 -2l1 0l-1 -3l1 -1l-1 -2l1 -2l2 0l0 -2l2 -2l2 2l2 -2l5 -6l0 -6l1 -1l-1 -4l2 -5l-1 -4l-1 -2l0 -1l2 -1l4 21l17 -3l2 12l3 -3l3 -5l2 1l2 -5l3 2l3 -1l0 -1l1 0l1 -2l1 0l2 -2l3 2l3 -1l-1 1l1 1l1 1l1 3l1 0l-1 5l-10 -6l0 3l-1 3l1 1l-2 4l-1 1l-3 3l0 3l-3 -2l-2 9l-2 2l-3 -1l-1 -2l-2 0l0 4l-2 3l1 1l-7 14l2 1l-2 2l1 1l-3 3l-1 -2l-4 4l-2 -1l0 1l1 1l-1 0l-6 3l-3 -2l0 2l-3 2l-2 0l-2 -1l-1 0l-2 -2l0 -2l-1 0l1 -1l-1 -1l-3 0l-3 -2l-1 -2l-4 -3l1 -2l-1 0l-3 -3l1 -3l-1 -3z","Illinois":"M576 265l1 -1l0 -2l0 -1l0 -2l4 -1l0 -3l3 -3l0 -4l-3 -3l1 -4l6 -2l1 -1l2 0l2 -2l1 -3l2 -2l0 -5l0 -2l-4 -2l-1 -3l-4 -3l0 -1l47 -3l0 5l3 5l3 8l5 54l-1 0l0 2l1 1l-2 1l2 4l1 1l0 2l1 2l0 1l-2 2l0 3l-2 1l-1 5l-1 -1l0 1l-1 -1l-1 2l1 2l-1 1l1 0l0 1l-1 0l0 2l-1 1l1 1l-1 -1l1 3l-2 3l1 2l1 1l0 1l-3 1l-2 1l-1 0l-1 1l0 2l2 3l-1 2l-1 0l-5 -2l-4 -1l-2 4l-1 1l1 1l-1 0l-1 -2l-1 0l1 1l0 1l-2 -1l-2 -5l-1 -1l1 -2l-2 -3l0 -1l1 -1l-1 -2l-3 -1l1 -1l-4 -2l-1 1l-1 -1l1 -1l-3 -2l-5 -4l0 -4l2 -5l-1 -3l2 -3l-6 -2l-2 2l-2 -1l-1 -3l1 0l-1 -4l-6 -4l-1 -2l-5 -4l-3 -9l0 -3l1 -3z","New Mexico":"M265 328l50 6l57 5l0 12l-1 0l-8 102l-68 -6l-1 2l2 3l-32 -4l-1 10l-16 -2l18 -128z","Arkansas":"M523 355l81 -3l0 2l1 1l0 2l-2 2l-3 5l12 -1l2 2l-3 1l2 1l-5 2l1 2l1 0l0 1l-2 1l1 1l-1 -1l-1 1l1 2l-1 1l0 -1l-2 1l0 1l1 -1l1 1l-1 1l-1 1l0 1l1 0l1 1l-1 0l1 1l-2 1l0 2l-2 0l0 1l1 2l-3 2l0 -2l-1 0l1 3l-2 1l0 -2l-1 2l2 1l-1 1l0 -1l-1 0l1 3l-1 2l1 1l-2 1l0 1l0 1l0 -2l-2 1l1 1l-2 1l0 1l-1 0l-1 0l3 1l-1 1l-1 -1l-1 1l2 1l-1 1l-1 1l0 1l-1 0l0 -1l-1 1l1 1l-1 1l2 2l-3 0l0 2l1 0l1 1l-1 0l-1 -1l-2 1l2 2l-1 0l0 2l0 1l1 0l0 -1l1 0l0 1l-2 1l1 1l1 -1l0 -1l1 0l-2 2l1 3l1 -1l0 1l0 2l-2 0l0 1l1 1l-1 1l-54 2l0 -12l-2 0l-1 -1l-1 1l-1 -1l-1 1l-3 -2l1 -40l-4 -26z","California":"M77 374l4 3l1 2l-1 1l-2 -2l0 -2l-2 -2zM75 384l3 6l-1 0l-1 -1l-1 -5zM57 355l3 2l4 1l-4 1l-3 -2l0 -2zM50 355l4 0l1 3l-3 0l-2 -3zM33 160l67 19l-17 67l74 110l-1 3l2 4l1 5l0 1l4 5l-3 2l-3 1l-1 2l-2 1l0 6l-1 0l-1 3l-2 2l-2 1l0 1l-1 1l1 1l-1 4l0 1l3 1l0 4l-1 2l-4 0l-46 -5l1 -2l-1 -2l-1 0l0 -3l1 -1l0 -6l-2 -6l-9 -11l-2 -1l0 1l-1 0l-3 -2l1 -2l-1 -5l-4 -1l-2 1l-5 -4l-1 -1l-1 -3l-4 -5l-6 -1l-4 -3l-6 -1l0 -2l-3 -2l2 -2l0 -1l1 -2l-1 -2l2 -5l-4 -2l0 -1l1 -4l0 -1l-2 -1l-2 -4l-1 -2l-1 -2l-1 -3l0 -3l-1 -1l-2 -4l-2 -4l1 -5l-1 -1l1 -1l1 1l1 -1l2 -3l-1 -3l-1 -2l-3 0l-4 -7l2 -3l-1 -3l0 -1l1 -6l2 0l0 5l4 4l-1 -1l1 -4l-1 -2l-2 -1l1 -3l-1 0l0 -2l3 -1l0 -1l-1 -2l-2 1l-1 2l1 1l-2 1l1 1l-1 -1l0 2l-1 0l-4 -6l-3 -1l2 -3l0 -2l-1 -1l0 -4l-3 -3l-1 -4l-3 -6l2 -3l-1 -8l3 -3l0 -7l-2 -5l0 -2l-4 -5l1 -4l9 -11l-1 -1l1 -2l3 -6l1 -7l-2 -2l3 -4z","Delaware":"M845 245l2 -3l1 -1l3 0l-1 3l-2 3l1 0l0 2l4 3l2 6l1 1l1 2l3 2l1 0l3 7l-11 3l-8 -28z","District of Columbia":"M826 267l1 -2l3 2l-2 3l0 -1l-2 -2z","Hawaii":"M305 584l5 -5l0 -1l-1 -4l1 -1l5 3l7 2l4 4l0 2l2 0l0 3l4 2l0 1l-3 3l-4 2l-3 0l-5 3l-2 4l-1 1l-5 -3l-1 -1l1 -5l-4 -10zM292 558l0 -2l2 -1l2 4l4 -2l2 1l2 2l2 1l1 1l-2 2l-6 2l-2 -1l0 -4l-4 -1l-1 -2zM284 558l1 0l2 0l2 2l0 1l-3 1l-2 -4zM279 554l1 -2l0 -1l5 1l1 -1l0 1l5 1l-2 2l-1 0l-5 -1l-4 0zM258 543l3 0l4 -3l2 4l0 2l2 1l0 -1l1 0l0 1l1 2l-1 1l-2 0l-2 -1l-4 0l-4 -6zM226 533l1 -3l4 -2l1 1l2 -1l3 2l-1 4l-3 2l-3 0l-4 -3zM216 537l4 -4l0 3l-2 0l-1 2l-1 -1z","Iowa":"M491 195l43 0l42 -2l1 3l2 3l-2 3l1 5l2 4l6 1l1 3l0 1l4 3l1 3l4 2l0 2l0 5l-2 2l-1 3l-2 2l-2 0l-1 1l-6 2l-1 4l3 3l0 4l-3 3l0 3l-4 1l0 2l0 1l0 2l-1 1l-1 -1l0 -1l-4 -3l-40 2l-29 0l0 -2l-2 -1l1 -4l-1 -6l1 -1l-1 0l-1 -2l1 0l0 -1l-1 0l0 -3l-1 0l0 -2l-1 1l-1 -1l0 -4l1 -2l-2 -2l1 -2l-2 0l0 -3l-2 -1l1 -2l-2 -3l1 -2l-1 -1l-2 -3l-1 -2l0 -1l1 -2l1 -4l1 -2l-1 -2l-1 0l-1 -2l1 0l0 -2l-1 -1l0 -2l3 0z","Kentucky":"M621 340l-1 -1l1 -1l2 -4l4 1l5 2l1 0l1 -2l-2 -3l0 -2l1 -1l1 0l2 -1l3 -1l0 -1l-1 -1l-1 -2l2 -3l2 0l1 -1l-1 -2l2 1l2 -1l1 2l1 -1l0 -3l1 2l3 -1l4 1l0 2l1 -1l1 -2l3 -2l1 -1l1 2l2 0l-1 1l1 0l1 -1l1 -1l0 -2l1 -1l-1 -1l1 0l2 -1l-1 0l0 -1l2 1l0 2l4 2l2 -2l0 -3l1 -3l2 0l1 -1l1 -3l1 -1l2 -2l-1 -4l2 0l3 1l3 -3l3 0l0 -3l-2 0l1 -2l-2 -1l2 -2l1 -1l2 2l3 -2l0 2l3 0l2 5l6 0l2 2l2 1l1 -2l1 0l5 1l2 0l2 -3l2 -1l1 4l3 0l2 3l1 3l-1 3l3 3l1 0l-1 2l4 3l1 2l3 2l3 0l-6 7l-6 5l0 1l-2 2l0 2l-3 2l-1 2l-7 3l-2 2l-16 2l-35 2l-24 3l0 -1l-4 0l0 5l-24 1l0 -2l1 -1l2 1l1 -2l-1 -1l2 -1l-1 -1l1 -4l-1 0z","Maryland":"M782 257l63 -12l8 28l11 -3l-1 10l-7 3l-1 1l-2 0l-1 1l0 -2l0 -1l-1 0l1 -2l-2 1l0 -1l1 -1l-1 -1l0 -3l-1 3l-1 -2l0 3l-2 0l-5 -5l2 0l-1 -2l0 -1l4 0l-4 -3l-2 2l1 -4l1 1l0 -1l0 -2l-3 1l1 1l-1 0l0 -4l1 1l2 -1l-1 -1l1 -1l-1 0l0 2l-2 -3l1 -4l1 -1l2 -1l-1 0l1 -2l-1 0l1 -2l-2 1l-1 1l2 1l-3 2l-1 -2l1 4l-1 -2l-1 0l1 2l-1 1l1 0l-2 2l-3 -1l4 2l0 2l1 1l-1 1l0 1l0 2l-1 2l2 5l3 3l0 1l-1 0l0 1l2 0l-1 1l2 2l1 2l-2 -1l-1 -1l0 1l-3 -2l-3 1l-2 -3l1 2l-2 0l-2 -3l-3 2l-1 0l-1 -2l2 -4l0 -1l1 -1l0 -2l2 -3l-3 -2l-1 2l-3 -1l0 -1l-5 -1l1 -2l-2 -2l-3 0l-1 0l-1 -3l-1 -1l-1 -1l1 -1l-3 1l-3 -2l-2 2l-1 0l-1 2l-1 0l0 1l-3 1l-3 -2l-2 5l-2 -1l-3 5l-3 3l-2 -12z","Michigan":"M662 139l1 -4l1 0l1 3l-1 1l-2 0zM652 228l3 -4l4 -8l1 -6l0 -5l-1 -7l-7 -14l2 -4l-2 -5l3 -7l0 -8l2 -1l0 -4l1 0l1 -2l2 1l3 -6l1 -1l0 1l-1 1l1 2l-1 2l0 -1l0 2l0 2l1 1l1 -3l-1 0l1 -2l-1 5l1 1l2 -5l-1 -7l3 -3l4 -1l-3 -2l-1 -2l3 -4l-1 0l3 0l0 -1l6 2l4 0l2 3l3 0l5 2l2 0l2 2l-1 0l3 5l-2 -1l-1 1l1 2l2 1l1 4l0 8l-1 2l-1 0l-1 5l-1 1l0 1l-3 0l-1 2l0 4l1 2l1 0l1 0l2 1l3 -3l-1 -1l1 -3l1 1l1 -1l-2 -1l2 0l1 -1l5 -3l3 1l2 3l4 14l3 5l-1 9l-2 2l-1 -2l1 -1l-1 -1l-2 1l1 2l-1 0l-1 2l0 4l-2 1l-1 2l1 3l-4 5l-1 4l-22 3l0 -1l-34 4zM601 92l9 -6l4 -2l-4 5l-5 2l2 1l-4 1l-2 -1zM585 123l6 -3l4 -3l6 -1l4 -4l2 0l1 -3l5 -3l2 -3l4 -2l3 -1l2 0l2 1l-4 1l1 1l-4 3l-1 2l-3 4l0 3l1 2l4 -5l-2 3l2 -2l4 -1l4 2l3 4l2 1l0 2l4 0l1 -1l3 2l1 0l0 -1l2 0l-1 -2l1 0l0 1l1 1l2 -3l5 -3l10 -1l5 -2l3 -1l-1 2l0 4l1 1l3 0l3 -1l0 1l2 -1l1 -1l4 -1l1 6l-1 1l-1 1l2 0l2 1l0 1l1 1l2 0l1 0l0 -1l-1 -1l4 0l2 2l0 1l-10 0l-4 2l-2 -1l-1 -1l-2 0l-1 2l1 2l0 1l-5 -4l-5 -1l-3 0l-3 4l-3 0l0 1l-2 -1l-4 1l-1 3l-3 3l0 2l-2 -2l1 -2l1 0l0 -3l-1 2l-2 0l-1 3l-2 0l-1 -3l0 3l-2 2l-2 5l-4 7l0 1l-2 -2l1 -3l-1 -2l-1 1l-2 0l1 -3l0 -1l0 -1l0 -1l0 -1l-3 -2l-2 0l-1 -1l1 -1l0 -1l-7 -2l-1 1l-1 0l-2 0l-5 -3l-17 -3l-2 -4l-1 -1l-1 1l-1 -1z","Mississippi":"M589 433l1 -1l-1 -1l0 -1l2 0l0 -2l0 -1l-1 1l-1 -3l2 -2l-1 0l0 1l-1 1l-1 -1l2 -1l0 -1l-1 0l0 1l-1 0l0 -1l0 -2l1 0l-2 -2l2 -1l1 1l1 0l-1 -1l-1 0l0 -2l3 0l-2 -2l1 -1l-1 -1l1 -1l0 1l1 0l0 -1l1 -1l1 -1l-2 -1l1 -1l1 1l1 -1l-3 -1l1 0l1 0l0 -1l2 -1l-1 -1l2 -1l0 2l0 -1l0 -1l2 -1l-1 -1l1 -2l-1 -3l1 0l0 1l1 -1l-2 -1l1 -2l0 2l2 -1l-1 -3l1 0l0 2l3 -2l-1 -2l39 -3l2 2l-2 69l4 34l-2 2l-8 -1l-7 2l0 -1l-1 0l0 1l-1 2l-1 1l-1 0l-2 -1l-2 -5l-2 -2l-1 -2l2 -8l-37 2l1 -1l-1 -2l0 -1l-1 -2l3 0l0 -1l-2 -2l1 -1l1 2l-1 -4l2 -1l-2 -1l1 -1l1 1l0 -2l3 -2l-2 0l0 -1l2 -1l1 -1l0 -1l2 -2l-1 0l0 -1l1 1l1 -3l0 1l-3 0l0 -2l3 -1l1 1l0 -2l1 -1l-1 0l-1 -2l-2 -1l0 -1l2 0l-1 -1l1 -1l-1 -1l-1 2l-1 -2l2 -2l-2 0l0 -2l1 -1l0 -2l-1 0l0 1l-1 0l0 -2z","Montana":"M198 39l35 7l52 9l41 5l51 6l-6 68l-2 22l-48 -5l-63 -9l-2 12l-1 -1l-2 -5l-1 -1l-1 1l-1 0l-1 3l-3 -1l-2 1l-1 -1l-4 0l-2 -2l-2 1l0 2l-5 -2l-2 0l-1 3l-2 -3l-1 -7l-2 -2l-1 1l-2 -2l0 -2l1 -1l0 -2l-1 -2l-2 -5l0 -4l-1 0l1 -2l-2 -3l-3 3l-2 0l-2 2l-1 -3l-2 0l0 -2l1 -1l0 -2l1 -2l2 1l0 -1l-1 -4l1 -1l-1 -1l0 -1l1 0l0 -2l4 -8l-2 0l-2 0l0 -2l-1 -1l-1 1l0 -2l-2 -2l0 -2l-1 -1l-3 -7l-3 -2l0 -1l-3 -3l2 0l-1 -2l1 -1l0 -2l-4 -7l5 -23z","New Hampshire":"M886 111l1 -5l-1 -1l1 0l1 -2l1 1l2 0l0 -2l12 38l1 4l1 1l2 2l1 2l2 1l-1 5l-3 1l0 1l-1 0l-1 1l0 1l-1 0l0 2l-19 4l-2 -2l0 -1l0 -2l1 -1l-2 -13l0 -1l0 -2l1 -2l1 -8l-1 -4l0 -1l3 -2l3 -4l0 -3l-2 -2l1 -4l-1 -2z","New York":"M869 217l1 1l-2 2l-1 1l0 -3l2 -1zM768 200l5 -6l3 -2l2 -3l2 -3l-2 -4l-1 0l0 -2l-1 0l0 -1l-1 -3l9 -4l12 -2l4 2l2 -1l7 -2l2 -1l6 -6l1 0l2 -2l-2 -5l-1 -1l0 -1l1 0l0 1l1 -2l-1 -1l-1 1l0 -1l-2 -1l0 -4l5 -5l2 -3l7 -10l5 -5l2 0l22 -5l1 9l2 4l0 1l1 2l-1 2l0 4l3 5l0 5l1 -1l1 -1l1 2l4 18l0 15l0 1l3 17l2 2l-4 3l2 2l-1 2l0 2l-1 0l1 1l1 -2l1 0l2 -3l5 0l1 0l0 -1l8 -3l4 -4l1 -1l0 2l1 0l1 0l2 1l2 -3l1 0l-20 15l-5 3l-4 1l-2 1l0 -1l-2 1l-1 -3l1 -7l-15 -5l-1 -1l-3 0l0 -1l-1 0l-3 -2l-1 -5l-1 -1l-2 1l-1 -2l-1 -1l-72 14l-1 -6z","Ohio":"M686 225l22 -3l10 3l1 -1l1 1l1 -1l2 3l3 0l7 -4l5 0l6 -7l12 -7l5 30l-2 1l0 1l1 2l1 4l-2 5l1 4l-1 1l0 6l-5 6l-2 2l-2 -2l-2 2l0 2l-2 0l-1 2l1 2l-1 1l1 3l-1 0l-1 2l-1 -3l-2 0l-2 5l1 4l-2 1l0 3l-4 2l-1 0l-2 -3l-3 0l-1 -4l-2 1l-2 3l-2 0l-5 -1l-1 0l-1 2l-2 -1l-2 -2l-6 0l-2 -5l-3 0l0 -2l-3 2l-2 -2l-1 1l-7 -59z","Oregon":"M71 70l1 0l1 3l4 1l3 3l0 3l-1 7l6 4l4 0l5 -1l7 2l2 1l0 2l2 -1l2 1l5 -1l3 2l3 0l5 -1l4 0l2 -1l7 2l3 -1l32 7l1 5l3 2l1 3l-5 6l-2 4l-2 2l0 2l-3 3l-2 1l-5 7l1 3l1 0l1 1l1 0l1 2l-2 1l0 2l-2 4l-9 41l-49 -12l-67 -19l-2 -3l0 -5l3 -6l-1 -6l2 -3l3 -7l5 -4l2 -5l9 -22l4 -9l3 -9l1 -6l2 -1l0 -5l2 2l0 -1l1 0l1 1l3 -1z","Tennessee":"M612 363l1 -2l1 -1l-2 -3l2 0l1 0l-1 -1l0 -1l1 0l0 -1l0 -2l1 -1l0 1l1 -1l24 -1l0 -5l4 0l0 1l24 -3l35 -2l16 -2l31 -4l0 -1l5 -1l0 1l-1 4l1 2l-2 0l-2 1l-1 5l-2 0l0 -1l-2 0l-1 1l-2 1l-2 4l-1 0l0 -2l-1 -1l-2 2l-1 2l-1 0l0 1l-1 3l-3 0l-6 6l-5 1l-2 1l-2 3l0 2l-1 1l-2 0l-1 1l0 6l-24 3l-47 4l-39 3l0 -1l2 0l0 -2l2 -1l-1 -1l1 0l-1 -1l-1 0l0 -1l1 -1l1 -1l-1 -1l-1 1l0 -1l2 -1l0 1l1 -1l-1 -2l1 -1l1 1l-1 -1l2 -1l0 -1l-1 0l-1 -2l5 -2l-2 -1l3 -1l-2 -2z","Utah":"M198 201l49 9l-3 22l33 5l-12 91l-42 -6l-47 -9l22 -112z","Virginia":"M855 284l1 -1l7 -3l-2 4l-2 2l-1 9l-2 4l1 2l-3 3l-1 -3l0 -4l1 -9l2 -2l-2 -1l1 -1zM747 313l1 1l-1 1l1 0l0 2l2 2l1 0l2 1l2 0l3 -2l0 -2l3 2l6 -3l1 0l-1 -1l0 -1l2 1l4 -4l1 2l3 -3l-1 -1l2 -2l-2 -1l7 -14l-1 -1l2 -3l0 -4l2 0l1 2l3 1l2 -2l2 -9l3 2l0 -3l3 -3l1 -1l2 -4l-1 -1l1 -3l0 -3l10 6l1 -5l3 0l2 2l-1 2l5 1l0 1l3 1l2 2l0 1l0 2l-1 1l0 1l-2 0l0 5l1 2l2 -1l2 -1l2 4l4 0l2 0l2 2l6 2l0 2l-1 0l1 3l-1 1l1 0l-1 1l-2 -1l-1 1l-2 -3l-2 -1l-3 -2l-1 -1l0 1l4 3l2 1l2 3l4 0l0 1l1 0l1 1l0 3l-3 -1l0 1l2 2l-3 1l1 0l1 0l1 1l2 1l0 2l-1 0l-1 2l-4 -3l-1 -2l-2 1l-2 -1l-1 1l2 0l1 1l1 -2l1 3l4 2l0 1l2 -1l1 1l0 -2l1 0l3 1l1 -1l5 8l-65 13l-38 5l0 -1l-5 1l0 1l-31 4l2 -2l7 -3l1 -2l3 -2l0 -2l2 -2l0 -1l6 -5l6 -7z","Washington":"M95 31l3 -3l1 0l0 3l-1 -1l-2 2l1 0l0 1l0 4l1 -2l2 2l-1 3l-1 -3l-1 1l-1 -2l1 -3l-1 0l-1 -2zM91 21l2 0l1 2l-1 -2l3 -1l2 2l-1 0l0 2l-1 3l-4 -3l-1 -3zM184 36l-14 58l1 4l-1 2l1 2l-32 -7l-3 1l-7 -2l-2 1l-4 0l-5 1l-3 0l-3 -2l-5 1l-2 -1l-2 1l0 -2l-2 -1l-7 -2l-5 1l-4 0l-6 -4l1 -7l0 -3l-3 -3l-4 -1l-1 -3l-1 0l-2 -1l-3 0l-2 -2l-1 1l3 -8l0 1l-1 5l1 0l0 -3l0 1l2 -1l-1 -3l3 -1l-1 -1l-2 1l-1 -2l0 -3l1 1l4 -1l-4 -3l0 2l-1 0l1 -5l0 -3l0 -2l1 -9l-3 -6l1 -4l2 -3l-1 -2l3 1l7 7l4 1l4 3l2 0l2 0l1 2l2 0l0 3l1 -1l0 -2l2 0l-1 1l0 1l1 -1l0 2l-1 0l1 3l-1 0l-3 4l1 -3l-1 0l-7 8l4 1l0 -1l-3 0l3 -4l4 -1l2 -2l2 -1l0 -2l1 1l-1 4l-1 -1l0 4l-1 1l1 1l-3 4l-1 2l-1 -2l1 -2l-1 1l-1 2l2 1l-2 1l-1 -3l1 -2l-1 1l-1 3l1 0l0 1l1 1l2 -1l2 -3l1 1l0 -1l2 0l0 -5l1 -1l0 -1l3 -6l1 0l1 -1l-2 -3l1 -2l-1 -1l-1 1l1 3l-2 -2l1 -2l2 0l0 -1l0 -1l-1 -1l0 -2l-2 1l-1 -2l1 -1l1 0l1 2l1 0l0 -2l1 -1l0 -1l0 -2l0 -1l-2 1l0 -1l-1 -1l1 -1l-1 -1l1 -1l-1 -1l1 -1l40 11l44 11z","Wisconsin":"M560 121l3 0l15 -6l2 1l-2 3l0 1l-1 3l1 0l2 -1l0 -2l3 2l2 1l1 1l1 -1l1 1l2 4l17 3l5 3l2 0l1 0l1 -1l7 2l0 1l-1 1l1 1l2 0l3 2l0 1l0 1l0 1l0 1l-1 3l2 0l1 -1l1 2l-1 3l2 2l0 3l-3 1l-2 5l-1 4l2 0l3 -3l2 -4l2 -2l1 1l2 -7l2 -1l0 -2l2 0l0 1l-1 0l0 3l-1 1l-1 4l-1 2l-3 6l0 5l0 4l-2 2l-1 5l1 4l-2 10l1 6l2 5l0 4l0 2l-47 3l-1 -3l-6 -1l-2 -4l-1 -5l2 -3l-2 -3l-1 -3l-1 -2l1 -4l-4 -5l-2 0l-5 -4l-1 -3l-5 -2l-2 -3l-3 0l-5 -4l1 -4l-1 -4l1 0l0 -4l1 -3l0 -1l-2 -3l-1 0l0 -3l1 -1l1 -3l3 -2l1 0l0 -1l2 0l0 -1l0 -14l1 0l1 -1l1 -1l1 1z","Nebraska":"M365 201l39 3l53 2l0 1l7 5l2 0l2 -3l10 1l1 2l3 0l0 1l1 0l4 2l-1 1l2 2l3 0l1 1l-1 2l2 3l-1 2l2 1l0 3l2 0l-1 2l2 2l-1 2l0 4l1 1l1 -1l0 2l1 0l0 3l1 0l0 1l-1 0l1 2l1 0l-1 1l1 6l-1 4l2 1l0 2l0 1l1 0l1 -1l-1 3l2 3l2 2l0 1l1 1l0 2l2 1l-56 0l-60 -3l1 -23l-34 -2l4 -46z","South Carolina":"M735 374l6 -3l6 -3l0 -1l1 1l24 -3l0 2l2 -2l3 4l1 2l20 -3l25 18l-3 2l-4 4l-3 7l1 5l-3 2l0 2l-2 0l-1 0l-1 1l-1 1l1 1l-4 4l-1 0l-1 0l2 1l0 1l-2 2l-3 1l-3 3l-3 0l1 2l0 2l-3 2l-2 -2l-1 1l3 2l-4 3l0 2l-5 -2l-1 -2l1 -1l-2 -4l-5 -3l-1 -5l-2 -2l0 -2l-5 -2l-1 -1l-1 -1l0 -1l-2 -1l0 -2l-3 -3l-3 -1l-1 -2l-2 -2l-5 -2l-4 -5l-3 -6l-3 0l-6 -3l0 -3l3 -4l0 -1z","Idaho":"M171 102l-1 -2l1 -2l-1 -4l14 -58l14 3l-5 23l4 7l0 2l-1 1l1 2l-2 0l3 3l0 1l3 2l3 7l1 1l0 2l2 2l0 2l1 -1l1 1l0 2l2 0l2 0l-4 8l0 2l-1 0l0 1l1 1l-1 1l1 4l0 1l-2 -1l-1 2l0 2l-1 1l0 2l2 0l1 3l2 -2l2 0l3 -3l2 3l-1 2l1 0l0 4l2 5l1 2l0 2l-1 1l0 2l2 2l1 -1l2 2l1 7l2 3l1 -3l2 0l5 2l0 -2l2 -1l2 2l4 0l1 1l2 -1l3 1l1 -3l1 0l1 -1l1 1l2 5l1 1l-9 56l-49 -9l-49 -10l9 -41l2 -4l0 -2l2 -1l-1 -2l-1 0l-1 -1l-1 0l-1 -3l5 -7l2 -1l3 -3l0 -2l2 -2l2 -4l5 -6l-1 -3l-3 -2l-1 -5z","Nevada":"M100 179l49 12l49 10l-22 112l-3 18l-3 4l-2 0l-1 -4l-4 0l-3 0l-1 4l1 1l-1 2l0 4l-1 3l1 8l-2 1l1 1l-1 1l-74 -110l17 -67z","Vermont":"M858 118l28 -7l1 2l-1 4l2 2l0 3l-3 4l-3 2l0 1l1 4l-1 8l-1 2l0 2l0 1l2 13l-1 1l0 2l0 1l2 2l-13 3l-4 -18l-1 -2l-1 1l-1 1l0 -5l-3 -5l0 -4l1 -2l-1 -2l0 -1l-2 -4l-1 -9z","Louisiana":"M577 511l3 0l3 1l-1 2l-2 0l-3 -3zM535 435l54 -2l0 2l1 0l0 -1l1 0l0 2l-1 1l0 2l2 0l-2 2l1 2l1 -2l1 1l-1 1l1 1l-2 0l0 1l2 1l1 2l1 0l-1 1l0 2l-1 -1l-3 1l0 2l3 0l0 -1l-1 3l-1 -1l0 1l1 0l-2 2l0 1l-1 1l-2 1l0 1l2 0l-3 2l0 2l-1 -1l-1 1l2 1l-2 1l1 4l-1 -2l-1 1l2 2l0 1l-3 0l1 2l0 1l1 2l-1 1l37 -2l-2 8l1 2l2 2l2 5l2 1l-2 1l-2 2l0 1l-2 0l-1 1l1 1l2 0l0 1l1 1l2 -1l0 -2l2 -2l2 0l-1 2l1 0l0 1l1 0l1 -2l1 1l0 1l-2 1l2 0l-3 1l1 1l1 0l0 1l-2 -1l-1 3l-1 -1l-1 0l0 1l-2 1l1 1l-2 -1l1 1l0 1l1 1l2 1l0 1l4 1l0 -1l2 2l0 -1l3 3l1 0l1 0l-2 1l1 0l-1 1l-1 3l-1 -1l-1 -1l-3 4l2 -4l0 -2l-1 -1l0 2l-1 0l-2 -2l-3 -1l-4 -1l-7 6l-2 -1l0 -3l-1 -1l-1 2l0 -2l-1 -1l-1 2l-2 0l0 1l-2 3l-2 1l0 1l-1 -1l-2 -2l-6 -1l-2 -2l2 -1l1 1l1 0l0 1l1 0l-1 -2l-1 -1l-1 -1l-2 1l0 -2l-2 1l-1 -2l-1 0l0 -2l-2 0l0 -2l-2 0l-3 1l1 -3l-3 0l0 1l-3 1l-1 0l0 1l2 0l-1 1l1 1l1 0l0 1l-5 1l-6 -1l-11 -4l-6 0l-6 1l-1 1l-2 -3l4 -5l-1 -1l1 -1l0 -3l-1 -1l1 -3l-1 -2l4 -7l-1 -1l1 -1l-1 -2l1 0l-1 -4l-1 1l0 -3l-1 -1l0 -1l-2 -2l1 -1l-2 -2l0 -2l0 -2l-5 -5l0 -23z","Rhode Island":"M911 183l1 0l1 3l-1 2l-2 -4l1 3l-2 1l1 -4l1 -1zM902 193l0 -2l-3 -13l6 -2l3 5l2 1l-1 2l0 -1l-2 -2l0 2l-1 1l1 0l1 2l-1 0l1 2l0 3l-6 2z"};
+const RAW = `United States|203514293871|185119074791|486829984357|27767734571|15456207628|918687295218
+Alabama|5117977904|2112357248|161201187|467052126|298215000|8156803465
+Alaska|2014216406|650133105|735665|46722900|17601494|2729409570
+Arizona|2663322459|79329061|16618079891|546393326|59646969|19966771706
+Arkansas|2958682794|1855784207|2584753934|405932229|27544176|7832697340
+California|47040613182|31506102474|67510856571|3697904929|658187793|150413664949
+Colorado|7442364276|4326708011|1664224797|228341709|257231667|13918870460
+Connecticut|6083473845|3896162811|36395323|697995818|253084019|10967111816
+Delaware|286738359|356969351|2485458714|62160385|16360207|3207687016
+District of Columbia|1084524486|1128217162|1796688584|85747740|52419288|4147597260
+Florida|6797505365|2861729956|22966306997|2537080776|376232286|35538855380
+Georgia|3989381886|4119932898|5609812549|719628764|567128767|15005884864
+Hawaii|282993705|180377834|2576828684|50558335|22999272|3113757830
+Idaho|2075042436|972583233|786033787|101826982|-1690292|3933796146
+Illinois|4721781390|3988805440|22406402076|817311448|611901771|32546202125
+Indiana|2817264838|6770496049|9226484805|413504137|318980071|19546729900
+Iowa|366477502|102460905|8153963663|193612907|-2616422|8813898555
+Kansas|178078210|83031438|4694154283|147149215|90259723|5192672869
+Kentucky|1570269401|3443828341|12573359447|340964420|-1740069|17926681540
+Louisiana|667889095|2954138717|12330641819|602858162|362815869|16918343662
+Maine|2598723306|1598298006|37902250|300939550|74617791|4610480903
+Maryland|5264781017|5224574699|6698957283|477936911|181845203|17848095113
+Massachusetts|7156035531|6037278474|11087997118|863021208|-109200000|25035132331
+Michigan|3490676476|4412520610|16089048841|817750023|167125435|24977121385
+Minnesota|2279054553|7685811421|8386435563|280217906|51211042|18682730485
+Mississippi|1063933695|2165076800|3576496504|348572105|33001237|7187080341
+Missouri|5038128306|5013788624|4665503185|483041607|829582808|16030044530
+Montana|1738769351|558777018|33588097|58995486|0|2390129952
+Nebraska|90718912|1431798518|2022592994|85987190|37183079|3668280693
+Nevada|1890284408|854674349|2923732973|273702497|13063253|5955457480
+New Hampshire|235535380|996000660|880475825|41824194|311112079|2464948138
+New Jersey|3237590513|3805052588|14801298523|592555353|989579832|23426076809
+New Mexico|719083454|886340443|6074522205|222377241|39835830|7942159173
+New York|18489962357|20952837387|50800041838|2948890968|2832847973|96024580523
+North Carolina|4515420196|3505087006|19862896778|713458273|205817789|28802680042
+North Dakota|417101516|782649173|197369207|24902613|-176905|1421845604
+Ohio|2111328382|8224129431|21360367290|849871929|1714880150|34260577182
+Oklahoma|5918404926|1791215609|1878917041|242597180|43785710|9874920466
+Oregon|1898054594|4743477830|9051790013|359740051|114404564|16167467052
+Pennsylvania|2101498738|5843712531|33698333902|1026296439|866376434|43536218044
+Rhode Island|498484402|943772560|1964761277|104993520|14580446|3526592205
+South Carolina|1616256013|2211787291|5704751888|361372518|191330230|10085497940
+South Dakota|887345970|576480745|2974010|47777171|1345258|1515923154
+Tennessee|2685983437|1046748175|8962768452|537454877|81424489|13314379430
+Texas|10720856514|4935367996|31519769874|1683488376|2115024612|50974507372
+Utah|1284312887|1232273229|2318024841|83964389|24888820|4943464166
+Vermont|1370847713|659135359|22494726|57995788|22706707|2133180293
+Virginia|5768903464|4122641461|11968446773|435389317|17876431|22313257446
+Washington|5838229740|6603616742|8096231070|611734990|350669518|21500482060
+West Virginia|581371499|1936578034|2144627075|207748673|71882899|4942208180
+Wisconsin|3444797643|2611229430|5811861430|436470039|182438878|12486797420
+Wyoming|403221439|337194351|2622735|23919881|584447|767542853`;
+const CATS = ["Fee-for-service acute care","Fee-for-service long-term care","Managed care and health plans","Payments to Medicare","DSH payments"];
+const DATA = {};
+RAW.trim().split("\n").forEach(l=>{const p=l.split("|");DATA[p[0]]={vals:p.slice(1,6).map(Number),total:+p[6]};});
+const US = DATA["United States"];
+const STATES = Object.keys(DATA).filter(k=>k!=="United States").sort();
+const RAMP = ["--s0","--s1","--s2","--s3","--s4"];
+
+const $ = id=>document.getElementById(id);
+const svg=$("map"), tip=$("tip"), pop=$("pop"), box=$("mapbox");
+const fmt = v=>{const a=Math.abs(v),s=v<0?"-":"";if(a>=1e9)return s+"$"+(a/1e9).toFixed(a>=1e11?0:1)+"B";if(a>=1e6)return s+"$"+(a/1e6).toFixed(a>=1e8?0:1)+"M";if(a>=1e3)return s+"$"+(a/1e3).toFixed(0)+"K";return s+"$"+a;};
+const pct = (v,t)=>(v/t*100).toFixed(v/t<0.1&&v/t>-0.1?1:0)+"%";
+
+let metric="total", selected=null, breaks=[];
+
+function valueOf(name){const d=DATA[name];if(!d)return null;return metric==="total"?d.total:Math.max(0,d.vals[+metric])/d.total;}
+function computeBreaks(){
+  const v=STATES.map(valueOf).sort((a,b)=>a-b);
+  breaks=[];for(let i=1;i<RAMP.length;i++){breaks.push(v[Math.floor(i*v.length/RAMP.length)]);}
+}
+function bin(x){let i=0;while(i<breaks.length&&x>=breaks[i])i++;return i;}
+function label(x){return metric==="total"?fmt(x):Math.round(x*100)+"%";}
+
+const NS="http://www.w3.org/2000/svg";
+const paths={};
+Object.keys(GEO).forEach(name=>{
+  if(!DATA[name])return;
+  const p=document.createElementNS(NS,"path");
+  p.setAttribute("d",GEO[name]);p.setAttribute("class","st");
+  p.setAttribute("tabindex","0");p.setAttribute("role","button");
+  p.dataset.name=name;
+  p.addEventListener("mousemove",e=>showTip(e,name));
+  p.addEventListener("mouseleave",hideTip);
+  p.addEventListener("click",()=>select(name));
+  p.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(name);}});
+  svg.appendChild(p);paths[name]=p;
+});
+
+function paint(){
+  computeBreaks();
+  Object.entries(paths).forEach(([n,p])=>{
+    const v=valueOf(n);p.style.fill=`var(${RAMP[bin(v)]})`;
+    p.setAttribute("aria-label",`${n}: ${metric==="total"?fmt(v)+" total":Math.round(v*100)+"% of spending"}`);
+  });
+  const sel=$("metric");
+  $("legendTitle").textContent=sel.options[sel.selectedIndex].text+(metric==="total"?" (states grouped into fifths)":"");
+  const lg=$("legend");lg.innerHTML="";
+  const sorted=STATES.map(valueOf).sort((a,b)=>a-b);
+  RAMP.forEach((c,i)=>{
+    const lo=i===0?sorted[0]:breaks[i-1], hi=i===RAMP.length-1?sorted[sorted.length-1]:breaks[i];
+    const d=document.createElement("div");d.className="sw";
+    d.innerHTML=`<i style="background:var(${c})"></i>${label(lo)}${i===RAMP.length-1?"+":""}`;
+    lg.appendChild(d);
+  });
+}
+
+function showTip(e,name){
+  const d=DATA[name],r=box.getBoundingClientRect();
+  const v=metric==="total"?fmt(d.total)+" total":pct(Math.max(0,d.vals[+metric]),d.total)+" · "+fmt(d.vals[+metric]);
+  tip.innerHTML=`<b>${name}</b><span>${v}</span>`;
+  tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.style.opacity=1;
+}
+function hideTip(){tip.style.opacity=0;}
+
+function placePop(name){
+  const p=paths[name];if(!p){pop.style.display="none";return;}
+  const bb=p.getBBox(),m=p.getScreenCTM(),r=box.getBoundingClientRect();
+  const pt=svg.createSVGPoint();pt.x=bb.x+bb.width/2;pt.y=bb.y+Math.min(bb.height*0.35,30);
+  const s=pt.matrixTransform(m);
+  const d=DATA[name];
+  const top=Object.entries(d.vals).sort((a,b)=>b[1]-a[1])[0];
+  pop.innerHTML=`<b>${name}</b><span>${fmt(d.total)} · ${pct(d.total,US.total)} of U.S. Medicaid spending</span><br><span>Largest: ${CATS[top[0]].toLowerCase()} (${pct(top[1],d.total)})</span>`;
+  pop.style.display="block";
+  let x=s.x-r.left;const w=pop.offsetWidth/2;x=Math.max(w+4,Math.min(r.width-w-4,x));
+  pop.style.left=x+"px";pop.style.top=(s.y-r.top)+"px";
+}
+
+function renderPanel(name){
+  const d=name?DATA[name]:US;
+  $("pKicker").textContent=name?"Selected state":"National total";
+  $("pName").textContent=name||"United States";
+  $("pTotal").textContent=fmt(d.total);
+  $("pSub").textContent=name?`Total Medicaid spending, FY 2024 · ${pct(d.total,US.total)} of the U.S. total`:"Total Medicaid spending, FY 2024, all states and D.C.";
+  const order=d.vals.map((v,i)=>[i,v]).sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(...d.vals);
+  $("pRows").innerHTML=order.map(([i,v])=>`<tr><td class="cat">${CATS[i]}<span class="barrow"><i style="width:${Math.max(0,v/max*100)}%"></i></span></td><td class="n${v<0?" neg":""}">${fmt(v)}</td><td class="n${v<0?" neg":""}">${v<0?"–":pct(v,d.total)}</td></tr>`).join("");
+  const negs=d.vals.map((v,i)=>v<0?CATS[i]:null).filter(Boolean);
+  $("pNote").textContent=negs.length?`${negs.join(", ")} is negative this year because of adjustments to earlier years' spending.`:"";
+}
+
+function select(name){
+  selected=(selected===name)?null:name;
+  Object.values(paths).forEach(p=>p.classList.toggle("sel",p.dataset.name===selected));
+  hideTip();
+  if(selected){svg.appendChild(paths[selected]);placePop(selected);}else pop.style.display="none";
+  $("statePick").value=selected||"";
+  renderPanel(selected);
+}
+
+const pick=$("statePick");
+pick.innerHTML=`<option value="">United States (all)</option>`+STATES.map(s=>`<option>${s}</option>`).join("");
+pick.addEventListener("change",()=>{const v=pick.value;selected=null;if(v)select(v);else select(null);});
+$("metric").addEventListener("change",e=>{metric=e.target.value;paint();});
+window.addEventListener("resize",()=>{if(selected)placePop(selected);});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&selected)select(selected);});
+
+$("fullTable").innerHTML=`<thead><tr><th>State</th>${CATS.map(c=>`<th class="n">${c}</th>`).join("")}<th class="n">Total</th></tr></thead><tbody>`+
+  ["United States",...STATES].map(s=>`<tr><td>${s}</td>${DATA[s].vals.map(v=>`<td class="n">${fmt(v)}</td>`).join("")}<td class="n">${fmt(DATA[s].total)}</td></tr>`).join("")+"</tbody>";
+
+paint();renderPanel(null);
+</script>
+</body>
+</html>
