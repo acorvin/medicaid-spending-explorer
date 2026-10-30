@@ -4,6 +4,21 @@ An interactive map of Medicaid spending by state and type of service for federal
 
 ![Medicaid Spending Explorer](images/medicaid-explorer-thumbnail.png)
 
+## The problem
+
+KFF publishes how each state's Medicaid spending divides by type of service, but as a table of 51 jurisdictions with a column for each category it is hard to compare states or to see how differently they spend. Spending also ranges from $767.5 million in Wyoming to $150.4 billion in California, so a map on a simple color scale would show almost every state in the same color.
+
+## What I did
+
+I built a single self-contained HTML page with no outside libraries. It maps all 50 states and D.C. by total spending or by any one category's share of a state's budget, colors them in fifths so differences stay visible, and opens a full breakdown for any state. It works from the keyboard, lists the states that are too small to click, and includes a table of all 51 jurisdictions.
+
+## Findings (FY 2024)
+
+- Managed care accounts for 53% of national Medicaid service spending and is the largest category in 36 of the 51 jurisdictions.
+- It is under 5% of spending in eight states (Alabama, Alaska, Connecticut, Maine, Montana, South Dakota, Vermont, Wyoming) and 93% in Iowa.
+- California and New York account for 26.8% of national spending; the five largest states account for 41%.
+- In North Dakota and New Hampshire, fee-for-service long-term care is the largest category, at 55% and 40%.
+
 ## Features
 
 - Choropleth map of all 50 states and D.C., colored by total spending or by any one category's share of a state's budget
@@ -47,13 +62,6 @@ To embed it on another site, host the file and load it in an iframe.
 - **Shares:** a category's spending divided by the state's total.
 - **Color groups:** the 51 jurisdictions are split into fifths by the selected measure. Spending ranges from $767.5 million in Wyoming to $150.4 billion in California, so a linear scale would leave almost every state in the same color.
 - **Color scale:** a single blue hue in five steps, checked for separation under color blindness and for contrast against the background.
-
-## Findings (FY 2024)
-
-- Managed care accounts for 53% of national Medicaid service spending and is the largest category in 36 of the 51 jurisdictions.
-- It is under 5% of spending in eight states (Alabama, Alaska, Connecticut, Maine, Montana, South Dakota, Vermont, Wyoming) and 93% in Iowa.
-- California and New York account for 26.8% of national spending; the five largest states account for 41%.
-- In North Dakota and New Hampshire, fee-for-service long-term care is the largest category, at 55% and 40%.
 
 ## Built with
 
